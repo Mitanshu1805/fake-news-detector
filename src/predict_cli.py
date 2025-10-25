@@ -1,14 +1,17 @@
 from pathlib import Path
 import joblib
+import numpy as np
 
 MODEL_DIR = Path(__file__).resolve().parents[1] / "models"
 model_path = MODEL_DIR / "news_classifier.joblib"
 
 if not model_path.exists():
-    raise SystemExit(f"Model file not found at {model_path}. Run 'python src/train.py' first.")
+    raise SystemExit(f"⚠️ Model file not found at {model_path}. Run 'python src/train.py' first.")
 
 print(f"Loading model from: {model_path}")
 pipeline = joblib.load(model_path)
+
+THRESHOLD = 0.60  # 60% confidence required
 
 def classify(text: str):
     clf = pipeline.named_steps.get("clf", None)
@@ -20,11 +23,11 @@ def classify(text: str):
         classes = list(clf.classes_)
         probs = {cls: float(prob)*100 for cls, prob in zip(classes, raw_probs)}
 
-    # Determine if uncertain
-    if probs:
-        diff = abs(probs.get("FAKE",0) - probs.get("REAL",0))
-        if diff < 15:  # threshold for uncertainty
+        max_conf = max(raw_probs)
+        pred = classes[np.argmax(raw_probs)]
+        if max_conf < THRESHOLD:
             pred = "UNCERTAIN / Needs more context"
+
     return pred, probs
 
 print("\n🔍 Fake News Detector — CLI")

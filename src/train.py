@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, roc_auc_score
 import joblib
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "dataset"
@@ -18,9 +18,7 @@ def load_dataset():
 
     fake_df = pd.read_csv(fake_path)
     real_df = pd.read_csv(real_path)
-    short_df = pd.read_csv(short_path)
 
-    # Label the data
     fake_df["label"] = "FAKE"
     real_df["label"] = "REAL"
 
@@ -41,9 +39,15 @@ def load_dataset():
 
     fake_df = build_text(fake_df)
     real_df = build_text(real_df)
-    short_df["input_text"] = short_df["text"]
 
-    df = pd.concat([fake_df, real_df, short_df], ignore_index=True)
+    # only include short dataset if it has labels
+    short_df = pd.read_csv(short_path)
+    if "label" in short_df.columns:
+        short_df["input_text"] = short_df["text"].astype(str)
+        df = pd.concat([fake_df, real_df, short_df], ignore_index=True)
+    else:
+        df = pd.concat([fake_df, real_df], ignore_index=True)
+
     df = df.sample(frac=1.0, random_state=42).reset_index(drop=True)
     return df
 
@@ -69,7 +73,11 @@ def main():
             min_df=3,
             sublinear_tf=True
         )),
-        ("clf", LogisticRegression(class_weight="balanced", max_iter=1000))
+        ("clf", LogisticRegression(
+            class_weight="balanced",
+            max_iter=2000,
+            solver="liblinear"
+        ))
     ])
 
     pipeline.fit(X_train, y_train)
@@ -80,10 +88,15 @@ def main():
     print("\nClassification Report:\n", classification_report(y_test, y_pred))
     print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
 
+    # Optional: ROC-AUC
+    if len(set(y_test)) == 2:
+        y_probs = pipeline.predict_proba(X_test)[:, 1]
+        auc = roc_auc_score([1 if lbl=="REAL" else 0 for lbl in y_test], y_probs)
+        print("\nROC-AUC:", auc)
+
     out_path = MODEL_DIR / "news_classifier.joblib"
     joblib.dump(pipeline, out_path)
     print(f"\n✅ Saved model to {out_path}")
 
 if __name__ == "__main__":
     main()
- 
