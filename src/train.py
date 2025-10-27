@@ -7,6 +7,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, roc_auc_score
 import joblib
 
+# Directories
 DATA_DIR = Path(__file__).resolve().parents[1] / "dataset"
 MODEL_DIR = Path(__file__).resolve().parents[1] / "models"
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -21,6 +22,7 @@ def load_dataset():
 
     fake_df["label"] = "FAKE"
     real_df["label"] = "REAL"
+    short_df["label"] = "REAL"  # or "FAKE" depending on your short dataset
 
     def build_text(df):
         cols = [c.lower() for c in df.columns]
@@ -70,7 +72,7 @@ def main():
             stop_words="english",
             ngram_range=(1, 2),   # unigrams + bigrams
             max_df=0.9,
-            min_df=3,
+            min_df=3,              # ignore very rare words
             sublinear_tf=True
         )),
         ("clf", LogisticRegression(
@@ -80,6 +82,7 @@ def main():
         ))
     ])
 
+    print("\nTraining model...")
     pipeline.fit(X_train, y_train)
 
     y_pred = pipeline.predict(X_test)
