@@ -22,7 +22,6 @@ def load_dataset():
 
     fake_df["label"] = "FAKE"
     real_df["label"] = "REAL"
-    short_df["label"] = "REAL"  # or "FAKE" depending on your short dataset
 
     def build_text(df):
         cols = [c.lower() for c in df.columns]
@@ -44,6 +43,7 @@ def load_dataset():
 
     # only include short dataset if it has labels
     short_df = pd.read_csv(short_path)
+    short_df["label"] = "REAL"  # or "FAKE" depending on your short dataset
     if "label" in short_df.columns:
         short_df["input_text"] = short_df["text"].astype(str)
         df = pd.concat([fake_df, real_df, short_df], ignore_index=True)
